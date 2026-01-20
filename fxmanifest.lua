@@ -13,7 +13,7 @@ escrow_ignore {
     'locales/*.lua',
 }
 
-dependencies { 'es_extended', 'esx_context', 'esx_identity', 'esx_skin' }
+dependencies { 'es_extended', 'esx_context', 'esx_skin' }
 
 shared_scripts { '@es_extended/imports.lua', '@es_extended/locale.lua', 'locales/*.lua', 'config.lua' }
 
