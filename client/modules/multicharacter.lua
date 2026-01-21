@@ -122,8 +122,12 @@ function Multicharacter:SpawnTempPed()
             TriggerEvent("skinchanger:loadSkin", character.skin, function()
                 Wait(100)
                 
-                if exports['lfCharacterCreator'] and exports['lfCharacterCreator'].applySkinAppearance then
-                    exports['lfCharacterCreator']:applySkinAppearance(character.skin)
+                local lfCreatorState = GetResourceState('lfCharacterCreator')
+                if lfCreatorState == 'started' and exports['lfCharacterCreator'] then
+                    local applyFunc = exports['lfCharacterCreator'].applySkinAppearance
+                    if applyFunc then
+                        applyFunc(character.skin)
+                    end
                 end
                 
                 DoScreenFadeIn(600)
@@ -152,8 +156,12 @@ function Multicharacter:ChangeExistingPed()
     
     if newCharacter.skin then
         TriggerEvent("skinchanger:loadSkin", newCharacter.skin)
-        if exports['lfCharacterCreator'] and exports['lfCharacterCreator'].applySkinAppearance then
-            exports['lfCharacterCreator']:applySkinAppearance(newCharacter.skin)
+        local lfCreatorState = GetResourceState('lfCharacterCreator')
+        if lfCreatorState == 'started' and exports['lfCharacterCreator'] then
+            local applyFunc = exports['lfCharacterCreator'].applySkinAppearance
+            if applyFunc then
+                applyFunc(newCharacter.skin)
+            end
         end
     end
 end
@@ -325,9 +333,13 @@ function Multicharacter:PlayerLoaded(playerData, isNew, skin)
         local characterSkin = skin or self.Characters[self.spawned].skin
         if characterSkin then
             TriggerEvent("skinchanger:loadSkin", characterSkin, function()
-                if exports['lfCharacterCreator'] and exports['lfCharacterCreator'].applySkinAppearance then
-                    Wait(50)
-                    exports['lfCharacterCreator']:applySkinAppearance(characterSkin)
+                local lfCreatorState = GetResourceState('lfCharacterCreator')
+                if lfCreatorState == 'started' and exports['lfCharacterCreator'] then
+                    local applyFunc = exports['lfCharacterCreator'].applySkinAppearance
+                    if applyFunc then
+                        Wait(50)
+                        applyFunc(characterSkin)
+                    end
                 end
             end)
         end
@@ -343,8 +355,12 @@ function Multicharacter:PlayerLoaded(playerData, isNew, skin)
         if skin and type(skin) == 'table' then
             Wait(300)
             
-            if exports['lfCharacterCreator'] and exports['lfCharacterCreator'].applySkinAppearance then
-                exports['lfCharacterCreator']:applySkinAppearance(skin)
+            local lfCreatorState = GetResourceState('lfCharacterCreator')
+            if lfCreatorState == 'started' and exports['lfCharacterCreator'] then
+                local applyFunc = exports['lfCharacterCreator'].applySkinAppearance
+                if applyFunc then
+                    applyFunc(skin)
+                end
             end
         end
         
