@@ -155,11 +155,60 @@ function Menu:InitCharacter()
     SetNuiFocus(true, true)
 end
 
+-- Fonction pour jouer une animation aléatoire depuis rpemotes-reborn
+local function PlayRandomEmote()
+    -- Vérifier si la fonctionnalité est activée
+    if not Config.EnableSelectionEmotes then
+        return
+    end
+
+    -- Vérifier si rpemotes-reborn est disponible
+    local rpemoteResource = GetResourceState('rpemotes-reborn')
+    if rpemoteResource ~= 'started' then
+        return
+    end
+
+    -- Vérifier si l'export est disponible
+    if not exports['rpemotes-reborn'] or not exports['rpemotes-reborn'].EmoteCommandStart then
+        return
+    end
+
+    -- Vérifier si la liste d'animations est configurée et non vide
+    if not Config.CharacterSelectionEmotes or #Config.CharacterSelectionEmotes == 0 then
+        return
+    end
+
+    -- Annuler l'animation précédente si une est en cours
+    if exports['rpemotes-reborn'].EmoteCancel then
+        exports['rpemotes-reborn']:EmoteCancel()
+        Wait(200)
+    end
+
+    -- Sélectionner une animation aléatoire
+    local randomIndex = math.random(1, #Config.CharacterSelectionEmotes)
+    local emoteName = Config.CharacterSelectionEmotes[randomIndex]
+
+    -- Attendre un peu pour que le personnage soit bien chargé
+    Wait(500)
+
+    -- Jouer l'animation via l'export de rpemotes-reborn
+    local success, error = pcall(function()
+        exports['rpemotes-reborn']:EmoteCommandStart(emoteName)
+    end)
+
+    if not success then
+        print(string.format("^1[esx_multicharacter] Erreur lors de la lecture de l'emote '%s': %s^7", emoteName, tostring(error)))
+    end
+end
+
 function Menu:SelectCharacter(index)
     Multicharacter:SetupCharacter(index)
     local playerPed = PlayerPedId()
     SetPedAoBlobRendering(playerPed, true)
     ResetEntityAlpha(playerPed)
+    
+    -- Jouer une animation aléatoire
+    PlayRandomEmote()
 end
 
 function Menu:PlayCharacter()

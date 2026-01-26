@@ -14,6 +14,20 @@ else
 
     Config.Relog = true
 
+    -- Activer les animations aléatoires lors de la sélection d'un personnage
+    Config.EnableSelectionEmotes = true
+
+    -- Liste des animations aléatoires à jouer lors de la sélection d'un personnage
+    -- Utilise les noms d'emotes de rpemotes-reborn
+    Config.CharacterSelectionEmotes = {
+        "smoke",      -- Fumer une cigarette
+        "bookc",      -- Lire un livre (variante 3)
+        "boombox2",   -- Boombox 2
+        "guitar",     -- Jouer de la guitare
+        "map2",       -- Carte
+        "selfie7",    -- Selfie 7
+    }
+
     Config.Default = {
         ["m"] = {
             mom = 43,
