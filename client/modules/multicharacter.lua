@@ -119,19 +119,31 @@ function Multicharacter:SpawnTempPed()
         if hasValidSkin then
             Wait(100)
             
-            TriggerEvent("skinchanger:loadSkin", character.skin, function()
-                Wait(100)
-                
-                local lfCreatorState = GetResourceState('lfCharacterCreator')
-                if lfCreatorState == 'started' and exports['lfCharacterCreator'] then
-                    local applyFunc = exports['lfCharacterCreator'].applySkinAppearance
-                    if applyFunc then
-                        applyFunc(character.skin)
-                    end
+            local skinToLoad = character.skin
+            local lfCreatorState = GetResourceState('lfCharacterCreator')
+            if lfCreatorState == 'started' and exports['lfCharacterCreator'] and exports['lfCharacterCreator'].skinForLoading then
+                local converted = exports['lfCharacterCreator'].skinForLoading(character.skin)
+                if converted ~= nil then
+                    skinToLoad = converted
                 end
-                
+            end
+            
+            if skinToLoad and type(skinToLoad) == 'table' then
+                TriggerEvent("skinchanger:loadSkin", skinToLoad, function()
+                    Wait(100)
+                    
+                    if lfCreatorState == 'started' and exports['lfCharacterCreator'] then
+                        local applyFunc = exports['lfCharacterCreator'].applySkinAppearance
+                        if applyFunc then
+                            applyFunc(character.skin)
+                        end
+                    end
+                    
+                    DoScreenFadeIn(600)
+                end)
+            else
                 DoScreenFadeIn(600)
-            end)
+            end
         else
             DoScreenFadeIn(600)
         end
@@ -154,14 +166,25 @@ function Multicharacter:ChangeExistingPed()
         end
     end
     
-    if newCharacter.skin then
-        TriggerEvent("skinchanger:loadSkin", newCharacter.skin)
+    if newCharacter.skin and type(newCharacter.skin) == 'table' then
+        local skinToLoad = newCharacter.skin
         local lfCreatorState = GetResourceState('lfCharacterCreator')
-        if lfCreatorState == 'started' and exports['lfCharacterCreator'] then
-            local applyFunc = exports['lfCharacterCreator'].applySkinAppearance
-            if applyFunc then
-                applyFunc(newCharacter.skin)
+        if lfCreatorState == 'started' and exports['lfCharacterCreator'] and exports['lfCharacterCreator'].skinForLoading then
+            local converted = exports['lfCharacterCreator'].skinForLoading(newCharacter.skin)
+            if converted ~= nil then
+                skinToLoad = converted
             end
+        end
+        
+        if skinToLoad and type(skinToLoad) == 'table' then
+            TriggerEvent("skinchanger:loadSkin", skinToLoad, function()
+                if lfCreatorState == 'started' and exports['lfCharacterCreator'] then
+                    local applyFunc = exports['lfCharacterCreator'].applySkinAppearance
+                    if applyFunc then
+                        applyFunc(newCharacter.skin)
+                    end
+                end
+            end)
         end
     end
 end
@@ -244,25 +267,41 @@ function Multicharacter:LoadSkinCreator(skin)
             SetPedAoBlobRendering(self.playerPed, true)
             ResetEntityAlpha(self.playerPed)
         else
-            TriggerEvent("skinchanger:loadSkin", skin, function()
+            -- Convertir le skin au format attendu par skinchanger (normalise le sexe en 0/1)
+            local skinToLoad = skin
+            local lfCreatorState = GetResourceState('lfCharacterCreator')
+            if lfCreatorState == 'started' and exports['lfCharacterCreator'] and exports['lfCharacterCreator'].skinForLoading then
+                local converted = exports['lfCharacterCreator'].skinForLoading(skin)
+                if converted ~= nil then
+                    skinToLoad = converted
+                end
+            end
+            
+            if skinToLoad and type(skinToLoad) == 'table' then
+                TriggerEvent("skinchanger:loadSkin", skinToLoad, function()
+                    DoScreenFadeIn(600)
+                    SetPedAoBlobRendering(self.playerPed, true)
+                    ResetEntityAlpha(self.playerPed)
+
+                    if exports['lfCharacterCreator'] and exports['lfCharacterCreator'].openSaveableMenu then
+                        exports['lfCharacterCreator']:openSaveableMenu(function()
+                            Multicharacter.finishedCreation = true
+                        end, function()
+                            Multicharacter.finishedCreation = true
+                        end)
+                    else
+                        TriggerEvent("esx_skin:openSaveableMenu", function()
+                            Multicharacter.finishedCreation = true
+                        end, function()
+                            Multicharacter.finishedCreation = true
+                        end)
+                    end
+                end)
+            else
                 DoScreenFadeIn(600)
                 SetPedAoBlobRendering(self.playerPed, true)
                 ResetEntityAlpha(self.playerPed)
-
-                if exports['lfCharacterCreator'] and exports['lfCharacterCreator'].openSaveableMenu then
-                    exports['lfCharacterCreator']:openSaveableMenu(function()
-                        Multicharacter.finishedCreation = true
-                    end, function()
-                        Multicharacter.finishedCreation = true
-                    end)
-                else
-                    TriggerEvent("esx_skin:openSaveableMenu", function()
-                        Multicharacter.finishedCreation = true
-                    end, function()
-                        Multicharacter.finishedCreation = true
-                    end)
-                end
-            end)
+            end
         end
     end)
 end
@@ -331,17 +370,28 @@ function Multicharacter:PlayerLoaded(playerData, isNew, skin)
         end
     elseif not isNew then
         local characterSkin = skin or self.Characters[self.spawned].skin
-        if characterSkin then
-            TriggerEvent("skinchanger:loadSkin", characterSkin, function()
-                local lfCreatorState = GetResourceState('lfCharacterCreator')
-                if lfCreatorState == 'started' and exports['lfCharacterCreator'] then
-                    local applyFunc = exports['lfCharacterCreator'].applySkinAppearance
-                    if applyFunc then
-                        Wait(50)
-                        applyFunc(characterSkin)
-                    end
+        if characterSkin and type(characterSkin) == 'table' then
+            -- Convertir le skin au format attendu par skinchanger (normalise le sexe en 0/1)
+            local skinToLoad = characterSkin
+            local lfCreatorState = GetResourceState('lfCharacterCreator')
+            if lfCreatorState == 'started' and exports['lfCharacterCreator'] and exports['lfCharacterCreator'].skinForLoading then
+                local converted = exports['lfCharacterCreator'].skinForLoading(characterSkin)
+                if converted ~= nil then
+                    skinToLoad = converted
                 end
-            end)
+            end
+            
+            if skinToLoad and type(skinToLoad) == 'table' then
+                TriggerEvent("skinchanger:loadSkin", skinToLoad, function()
+                    if lfCreatorState == 'started' and exports['lfCharacterCreator'] then
+                        local applyFunc = exports['lfCharacterCreator'].applySkinAppearance
+                        if applyFunc then
+                            Wait(50)
+                            applyFunc(characterSkin)
+                        end
+                    end
+                end)
+            end
         end
     end
 
