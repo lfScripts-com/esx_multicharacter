@@ -15,7 +15,7 @@ else
     Config.Relog = true
 
     -- Activer les animations aléatoires lors de la sélection d'un personnage
-    Config.EnableSelectionEmotes = true
+    Config.EnableSelectionEmotes = false
 
     -- Liste des animations aléatoires à jouer lors de la sélection d'un personnage
     -- Utilise les noms d'emotes de rpemotes-reborn
@@ -25,7 +25,9 @@ else
         "boombox2",   -- Boombox 2
         "guitar",     -- Jouer de la guitare
         "map2",       -- Carte
-        "selfie7",    -- Selfie 7
+        "surfboarder",
+        "crossarm3",
+        "impatient",
     }
 
     Config.Default = {
