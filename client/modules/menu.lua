@@ -22,11 +22,46 @@ local GetSlot = function()
     end
 end
 
--- Fonction pour réinitialiser le personnage au modèle par défaut propre
+local function PlayRandomEmote()
+    if not Config.EnableSelectionEmotes then
+        return
+    end
+
+    local rpemoteResource = GetResourceState('rpemotes-reborn')
+    if rpemoteResource ~= 'started' then
+        return
+    end
+
+    if not exports['rpemotes-reborn'] or not exports['rpemotes-reborn'].EmoteCommandStart then
+        return
+    end
+
+    if not Config.CharacterSelectionEmotes or #Config.CharacterSelectionEmotes == 0 then
+        return
+    end
+
+    if exports['rpemotes-reborn'].EmoteCancel then
+        exports['rpemotes-reborn']:EmoteCancel()
+        Wait(200)
+    end
+
+    local randomIndex = math.random(1, #Config.CharacterSelectionEmotes)
+    local emoteName = Config.CharacterSelectionEmotes[randomIndex]
+
+    Wait(500)
+
+    local success, error = pcall(function()
+        exports['rpemotes-reborn']:EmoteCommandStart(emoteName)
+    end)
+
+    if not success then
+        print(string.format("^1[esx_multicharacter] Erreur lors de la lecture de l'emote '%s': %s^7", emoteName, tostring(error)))
+    end
+end
+
 local function ResetToDefaultModel(callback)
     local model = `mp_m_freemode_01`
-    
-    -- Charger le modèle
+
     RequestModel(model)
     local timeout = GetGameTimer() + 5000
     while not HasModelLoaded(model) do
@@ -40,52 +75,39 @@ local function ResetToDefaultModel(callback)
         if callback then callback() end
         return
     end
-    
-    -- Appliquer le modèle
+
     SetPlayerModel(PlayerId(), model)
     local ped = PlayerPedId()
-    
-    -- Réinitialiser tous les composants à leur valeur par défaut
+
     SetPedDefaultComponentVariation(ped)
-    
-    -- Réinitialiser le head blend (parents) avec des valeurs neutres
+
     SetPedHeadBlendData(ped, 0, 0, 0, 0, 0, 0, 0.5, 0.5, 0.0, true)
-    
-    -- Attendre que le head blend soit terminé
+
     while not HasPedHeadBlendFinished(ped) do
         Wait(0)
     end
-    
-    -- Réinitialiser tous les traits du visage à 0
+
     for i = 0, 19 do
         SetPedFaceFeature(ped, i, 0.0)
     end
-    
-    -- Réinitialiser tous les overlays (maquillage, barbe, etc.)
+
     for i = 0, 12 do
         SetPedHeadOverlay(ped, i, 0, 0.0)
     end
-    
-    -- Réinitialiser la couleur des cheveux
+
     SetPedHairColor(ped, 0, 0)
     
-    -- Réinitialiser la couleur des yeux
     SetPedEyeColor(ped, 0)
     
-    -- Réinitialiser les cheveux (composant 2)
     SetPedComponentVariation(ped, 2, 0, 0, 2)
     
-    -- Vêtements par défaut homme (torse nu, pantalon basique)
     SetPedComponentVariation(ped, 3, 15, 0, 2)  -- Bras
     SetPedComponentVariation(ped, 4, 14, 0, 2)  -- Pantalon
     SetPedComponentVariation(ped, 6, 34, 0, 2)  -- Chaussures
     SetPedComponentVariation(ped, 8, 15, 0, 2)  -- T-shirt
     SetPedComponentVariation(ped, 11, 15, 0, 2) -- Torse
     
-    -- Retirer tous les props (chapeau, lunettes, etc.)
     ClearAllPedProps(ped)
-    
-    -- Effacer les tatouages
     ClearPedDecorations(ped)
     
     SetModelAsNoLongerNeeded(model)
@@ -100,7 +122,6 @@ function Menu:NewCharacter()
 
     TriggerServerEvent("esx_multicharacter:CharacterChosen", slot, true)
     
-    -- Réinitialiser le personnage au modèle par défaut AVANT d'ouvrir le créateur
     ResetToDefaultModel(function()
         if exports['lfCharacterCreator'] and exports['lfCharacterCreator'].openSaveableMenu then
             TriggerEvent('lfCharacterCreator:setCharId', slot)
@@ -139,6 +160,9 @@ function Menu:InitCharacter()
     if not Multicharacter.spawned then
         Multicharacter:SetupCharacter(Character)
     end
+
+    PlayRandomEmote()
+
     Wait(500)
     
     SendNUIMessage({
@@ -155,63 +179,23 @@ function Menu:InitCharacter()
     SetNuiFocus(true, true)
 end
 
--- Fonction pour jouer une animation aléatoire depuis rpemotes-reborn
-local function PlayRandomEmote()
-    -- Vérifier si la fonctionnalité est activée
-    if not Config.EnableSelectionEmotes then
-        return
-    end
-
-    -- Vérifier si rpemotes-reborn est disponible
-    local rpemoteResource = GetResourceState('rpemotes-reborn')
-    if rpemoteResource ~= 'started' then
-        return
-    end
-
-    -- Vérifier si l'export est disponible
-    if not exports['rpemotes-reborn'] or not exports['rpemotes-reborn'].EmoteCommandStart then
-        return
-    end
-
-    -- Vérifier si la liste d'animations est configurée et non vide
-    if not Config.CharacterSelectionEmotes or #Config.CharacterSelectionEmotes == 0 then
-        return
-    end
-
-    -- Annuler l'animation précédente si une est en cours
-    if exports['rpemotes-reborn'].EmoteCancel then
-        exports['rpemotes-reborn']:EmoteCancel()
-        Wait(200)
-    end
-
-    -- Sélectionner une animation aléatoire
-    local randomIndex = math.random(1, #Config.CharacterSelectionEmotes)
-    local emoteName = Config.CharacterSelectionEmotes[randomIndex]
-
-    -- Attendre un peu pour que le personnage soit bien chargé
-    Wait(500)
-
-    -- Jouer l'animation via l'export de rpemotes-reborn
-    local success, error = pcall(function()
-        exports['rpemotes-reborn']:EmoteCommandStart(emoteName)
-    end)
-
-    if not success then
-        print(string.format("^1[esx_multicharacter] Erreur lors de la lecture de l'emote '%s': %s^7", emoteName, tostring(error)))
-    end
-end
-
 function Menu:SelectCharacter(index)
     Multicharacter:SetupCharacter(index)
     local playerPed = PlayerPedId()
     SetPedAoBlobRendering(playerPed, true)
     ResetEntityAlpha(playerPed)
-    
-    -- Jouer une animation aléatoire
+
     PlayRandomEmote()
 end
 
 function Menu:PlayCharacter()
+    local rpemoteResource = GetResourceState('rpemotes-reborn')
+    if rpemoteResource == 'started' and exports['rpemotes-reborn'] and exports['rpemotes-reborn'].EmoteCancel then
+        pcall(function()
+            exports['rpemotes-reborn']:EmoteCancel()
+        end)
+    end
+
     Multicharacter:CloseUI()
     TriggerServerEvent("esx_multicharacter:CharacterChosen", Multicharacter.spawned, false)
 end
