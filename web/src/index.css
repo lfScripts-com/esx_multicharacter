@@ -126,12 +126,12 @@ body {
   border: none;
   color: var(--white-70);
   font-family: var(--font);
-  font-size: 1.15rem;
+  font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
   cursor: pointer;
-  padding: 14px 0;
+  padding: 18px 0;
   text-align: left;
   transition: all 0.25s ease;
   text-shadow: 0 2px 15px rgba(0, 0, 0, 0.5);
@@ -151,7 +151,7 @@ body {
 
 .mc-action-btn.mc-play {
   color: var(--white-90);
-  font-size: 1.3rem;
+  font-size: 1.55rem;
 }
 
 .mc-action-btn.mc-play:hover {
@@ -168,7 +168,7 @@ body {
 
 .mc-action-btn.mc-delete {
   color: var(--white-30);
-  font-size: 0.85rem;
+  font-size: 1.05rem;
 }
 
 .mc-action-btn.mc-delete:hover {
