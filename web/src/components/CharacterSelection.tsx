@@ -1,112 +1,130 @@
 import React, { useState } from 'react';
 import { Character, Locale } from '../types/Character';
-import CharacterCard from './CharacterCard';
-import CharacterInfo from './CharacterInfo';
 import { fetchNui } from '../utils/fetchNui';
 
-interface CharacterSelectionProps {
+interface Props {
   initialCharacters: Character[];
-  Candelete: boolean;
-  MaxAllowedSlot : number;
-  locale : Locale;
+  canDelete: boolean;
+  maxSlots: number;
+  locale: Locale;
 }
 
-const CharacterSelection: React.FC<CharacterSelectionProps> = ({ initialCharacters, Candelete, MaxAllowedSlot, locale }) => {
+const CharacterSelection: React.FC<Props> = ({ initialCharacters, canDelete, maxSlots, locale }) => {
   const [characters, setCharacters] = useState<Character[]>(initialCharacters);
-  const [showInfo, setShowInfo] = useState<string | null>(null);
-  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(
-    characters.find(char => char.isActive) || null
+  const [selected, setSelected] = useState<Character | null>(
+    initialCharacters.find(c => c.isActive) || initialCharacters[0] || null
   );
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const handleSelectCharacter = (id: string) => {
-    if (selectedCharacter?.id === id) return;
+  const activeChar = selected;
 
-    const updatedCharacters = characters.map(char => ({
-      ...char,
-      isActive: char.id === id
-    }));
-    
-    setCharacters(updatedCharacters);
-    setSelectedCharacter(updatedCharacters.find(char => char.id === id) || null);
-    setShowInfo(null);
-    fetchNui('SelectCharacter', {id : id})
+  const handleSelectSlot = (slotId: string, isNew: boolean) => {
+    if (isNew) {
+      fetchNui('CreateCharacter');
+      return;
+    }
+    if (selected?.id === slotId) return;
+    const updated = characters.map(c => ({ ...c, isActive: c.id === slotId }));
+    setCharacters(updated);
+    setSelected(updated.find(c => c.id === slotId) || null);
+    setConfirmDelete(false);
+    fetchNui('SelectCharacter', { id: slotId });
   };
 
-  const toggleInfo = (id: string) => {
-    setShowInfo(showInfo === id ? null : id);
+  const handlePlay = () => {
+    fetchNui('PlayCharacter');
   };
 
-  const PlayCharacter = () => {
-    fetchNui('PlayCharacter')
-  }
+  const handleQuit = () => {
+    fetchNui('QuitGame');
+  };
 
-  const handleCreateCharacter = () => {
-    fetchNui('CreateCharacter')
-  }
-
-  const handleDeleteCharacter = () => {
-    if (!selectedCharacter) return;
-
-    const updatedCharactersRaw = characters.filter(char => char.id !== selectedCharacter.id);
-
+  const handleDelete = () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    if (!selected) return;
     fetchNui('DeleteCharacter');
-
-    if (updatedCharactersRaw.length > 0) {
-      const updatedCharacters = updatedCharactersRaw.map((char, index) => ({
-        ...char,
-        isActive: index === 0
-      }));
-
-      setCharacters(updatedCharacters);
-      setSelectedCharacter(updatedCharacters[0]);
-      setShowInfo(null);
+    const remaining = characters.filter(c => c.id !== selected.id);
+    if (remaining.length > 0) {
+      const updated = remaining.map((c, i) => ({ ...c, isActive: i === 0 }));
+      setCharacters(updated);
+      setSelected(updated[0]);
     } else {
       setCharacters([]);
-      setSelectedCharacter(null);
-      setShowInfo(null);
-      handleCreateCharacter();
+      setSelected(null);
+      fetchNui('CreateCharacter');
     }
+    setConfirmDelete(false);
   };
 
+  const filledSlots = characters.map(c => parseInt(c.id));
+  const slots: { id: number; filled: boolean }[] = [];
+  for (let i = 1; i <= maxSlots; i++) {
+    slots.push({ id: i, filled: filledSlots.includes(i) });
+  }
+
   return (
-    <div className="multicharacter-container">
-      <div className="multicharacter-header">
-        <h2 className="multicharacter-header-title">{locale.title}</h2>
-      </div>
-      
-      <div className="multicharacter-list">
-        {characters.map(character => (
-          <div key={character.id}>
-            <CharacterCard 
-              character={character} 
-              onSelect={handleSelectCharacter}
-              onInfoClick={toggleInfo}
-              showInfo={showInfo === character.id}
-              PlayCharacter={PlayCharacter}
-            />
-            {character.isActive && showInfo === character.id && (
-              <CharacterInfo 
-                character={character} 
-                onClose={() => setShowInfo(null)}
-                isAllowedtoDelete={Candelete}
-                PlayCharacter={PlayCharacter}
-                handleDelete={handleDeleteCharacter}
-                locale={locale}
-              />
-            )}
+    <div className="mc-screen">
+      {/* Character info - top right */}
+      {activeChar && (
+        <div className="mc-character-info">
+          <span className="mc-firstname">{activeChar.firstname}</span>
+          <span className="mc-lastname">{activeChar.lastname.toUpperCase()}</span>
+          <div className="mc-separator" />
+          <span className="mc-job">{activeChar.occupation}</span>
+        </div>
+      )}
+
+      {/* Actions - left */}
+      <div className="mc-actions">
+        {activeChar && !confirmDelete && (
+          <button className="mc-action-btn mc-play" onClick={handlePlay} disabled={activeChar.disabled}>
+            {locale.play_game}
+          </button>
+        )}
+        {canDelete && activeChar && !confirmDelete && (
+          <button className="mc-action-btn mc-delete" onClick={handleDelete}>
+            {locale.delete}
+          </button>
+        )}
+        {!confirmDelete && (
+          <button className="mc-action-btn mc-quit" onClick={handleQuit}>
+            {locale.quit}
+          </button>
+        )}
+
+        {confirmDelete && (
+          <div className="mc-confirm">
+            <p className="mc-confirm-text">{locale.delete_confirm}</p>
+            <div className="mc-confirm-buttons">
+              <button className="mc-action-btn mc-confirm-yes" onClick={handleDelete}>
+                {locale.yes}
+              </button>
+              <button className="mc-action-btn mc-confirm-no" onClick={() => setConfirmDelete(false)}>
+                {locale.no}
+              </button>
+            </div>
           </div>
-        ))}
+        )}
       </div>
-      
-      <div className="multicharacter-footer">
-        <button 
-          className="create-character-btn"
-          onClick={handleCreateCharacter}
-          disabled={characters.length >= MaxAllowedSlot}  
-        >
-          <span className="material-symbols-outlined">add</span>
-          <span>Créer un personnage</span>
-        </button>
+
+      {/* Slot selector - bottom right */}
+      <div className="mc-slots">
+        {slots.map(slot => {
+          const char = characters.find(c => parseInt(c.id) === slot.id);
+          const isActive = activeChar && parseInt(activeChar.id) === slot.id;
+          return (
+            <button
+              key={slot.id}
+              className={`mc-slot ${isActive ? 'active' : ''} ${!slot.filled ? 'empty' : ''}`}
+              onClick={() => handleSelectSlot(slot.id.toString(), !slot.filled)}
+            >
+              {slot.filled ? slot.id : '+'}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

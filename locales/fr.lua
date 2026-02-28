@@ -15,8 +15,11 @@ Locales["fr"] = {
     ["charnotfound"] = "Le personnage #%s de %s n'existe pas",
 
     UI = {
-        ["title"] = "SÉLECTION DE PERSONNAGE",
-        ["char_info_title"] = "Infos du personnage",
-        ["play"] = "JOUER",
+        ["play_game"] = "JOUER CE PERSONNAGE",
+        ["quit"] = "QUITTER",
+        ["delete"] = "SUPPRIMER",
+        ["delete_confirm"] = "Êtes-vous sûr de vouloir supprimer ?",
+        ["yes"] = "OUI",
+        ["no"] = "NON",
     }
 }

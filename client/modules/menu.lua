@@ -22,40 +22,55 @@ local GetSlot = function()
     end
 end
 
-local function PlayRandomEmote()
-    if not Config.EnableSelectionEmotes then
-        return
+local function CancelEmote()
+    local rpemoteResource = GetResourceState('rpemotes-reborn')
+    if rpemoteResource ~= 'started' then return end
+    if not exports['rpemotes-reborn'] or not exports['rpemotes-reborn'].EmoteCancel then return end
+    pcall(function()
+        exports['rpemotes-reborn']:EmoteCancel()
+    end)
+end
+
+local function GetCurrentPedGender()
+    local ped = PlayerPedId()
+    local model = GetEntityModel(ped)
+    if model == `mp_f_freemode_01` then
+        return "f"
+    elseif model == `mp_m_freemode_01` then
+        return "m"
+    else
+        return "other"
     end
+end
+
+local function PlayRandomEmote()
+    local emotes = Config.SelectionEmotes
+    if not emotes or #emotes == 0 then return end
 
     local rpemoteResource = GetResourceState('rpemotes-reborn')
-    if rpemoteResource ~= 'started' then
-        return
+    if rpemoteResource ~= 'started' then return end
+    if not exports['rpemotes-reborn'] or not exports['rpemotes-reborn'].EmoteCommandStart then return end
+
+    local gender = GetCurrentPedGender()
+    local available = {}
+    for _, emote in ipairs(emotes) do
+        if emote.gender == "all" or emote.gender == gender then
+            available[#available + 1] = emote.name
+        end
     end
 
-    if not exports['rpemotes-reborn'] or not exports['rpemotes-reborn'].EmoteCommandStart then
-        return
-    end
+    if #available == 0 then return end
 
-    if not Config.CharacterSelectionEmotes or #Config.CharacterSelectionEmotes == 0 then
-        return
-    end
+    CancelEmote()
+    Wait(300)
 
-    if exports['rpemotes-reborn'].EmoteCancel then
-        exports['rpemotes-reborn']:EmoteCancel()
-        Wait(200)
-    end
-
-    local randomIndex = math.random(1, #Config.CharacterSelectionEmotes)
-    local emoteName = Config.CharacterSelectionEmotes[randomIndex]
-
-    Wait(500)
-
-    local success, error = pcall(function()
+    local emoteName = available[math.random(1, #available)]
+    local success, err = pcall(function()
         exports['rpemotes-reborn']:EmoteCommandStart(emoteName)
     end)
 
     if not success then
-        print(string.format("^1[esx_multicharacter] Erreur lors de la lecture de l'emote '%s': %s^7", emoteName, tostring(error)))
+        print(string.format("^1[esx_multicharacter] Erreur emote '%s': %s^7", emoteName, tostring(err)))
     end
 end
 
@@ -124,9 +139,8 @@ function Menu:NewCharacter()
     
     ResetToDefaultModel(function()
         if exports['lfCharacterCreator'] and exports['lfCharacterCreator'].openSaveableMenu then
-            TriggerEvent('lfCharacterCreator:setCharId', slot)
             exports['lfCharacterCreator']:openSaveableMenu(function()
-            end)
+            end, nil, slot)
         else
             TriggerEvent("esx_identity:showRegisterIdentity")
         end
@@ -158,7 +172,7 @@ function Menu:InitCharacter()
     self:CheckModel(Characters[Character])
 
     if not Multicharacter.spawned then
-        Multicharacter:SetupCharacter(Character)
+        Multicharacter:SetupCharacter(Character, true)
     end
 
     PlayRandomEmote()
@@ -180,6 +194,12 @@ function Menu:InitCharacter()
 end
 
 function Menu:SelectCharacter(index)
+    CancelEmote()
+
+    local oldPed = PlayerPedId()
+    ClearPedTasksImmediately(oldPed)
+    ClearAllPedProps(oldPed)
+
     Multicharacter:SetupCharacter(index)
     local playerPed = PlayerPedId()
     SetPedAoBlobRendering(playerPed, true)
@@ -189,12 +209,12 @@ function Menu:SelectCharacter(index)
 end
 
 function Menu:PlayCharacter()
-    local rpemoteResource = GetResourceState('rpemotes-reborn')
-    if rpemoteResource == 'started' and exports['rpemotes-reborn'] and exports['rpemotes-reborn'].EmoteCancel then
-        pcall(function()
-            exports['rpemotes-reborn']:EmoteCancel()
-        end)
-    end
+    CancelEmote()
+    Wait(300)
+
+    local ped = PlayerPedId()
+    ClearPedTasksImmediately(ped)
+    ClearAllPedProps(ped)
 
     Multicharacter:CloseUI()
     TriggerServerEvent("esx_multicharacter:CharacterChosen", Multicharacter.spawned, false)

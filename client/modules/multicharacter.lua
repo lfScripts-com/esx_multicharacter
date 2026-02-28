@@ -4,16 +4,95 @@ Multicharacter._index = Multicharacter
 Multicharacter.canRelog = true
 Multicharacter.Characters = {}
 Multicharacter.hidePlayers = false
+Multicharacter.currentPositionIndex = 1
+Multicharacter.shuffledPositions = nil
 
-function Multicharacter:SetupCamera()
-    self.cam = CreateCam("DEFAULT_SCRIPTED_CAMERA", true)
+function Multicharacter:ShufflePositions()
+    local positions = Config.CharacterPositions
+    if not positions or #positions == 0 then
+        self.shuffledPositions = {}
+        return
+    end
+
+    local indices = {}
+    for i = 1, #positions do
+        indices[i] = i
+    end
+
+    for i = #indices, 2, -1 do
+        local j = math.random(1, i)
+        indices[i], indices[j] = indices[j], indices[i]
+    end
+
+    self.shuffledPositions = indices
+end
+
+function Multicharacter:GetPositionForSlot(slotIndex)
+    local positions = Config.CharacterPositions
+    if not positions or #positions == 0 then
+        return { x = 0.0, y = 0.0, z = 0.0, w = 0.0 }
+    end
+
+    if not self.shuffledPositions or #self.shuffledPositions == 0 then
+        self:ShufflePositions()
+    end
+
+    local shuffleIndex = ((slotIndex - 1) % #self.shuffledPositions) + 1
+    local posIndex = self.shuffledPositions[shuffleIndex]
+    return positions[posIndex]
+end
+
+function Multicharacter:SetupCamera(pos)
+    pos = pos or self.spawnCoords
+    if not self.cam then
+        self.cam = CreateCam("DEFAULT_SCRIPTED_CAMERA", true)
+    end
     SetCamActive(self.cam, true)
     RenderScriptCams(true, false, 1, true, true)
 
-    local offset = GetOffsetFromEntityInWorldCoords(self.playerPed, 0, 1.7, 0.4)
+    self:UpdateCameraForPosition(pos)
+end
 
-    SetCamCoord(self.cam, offset.x + 0.7, offset.y , offset.z)
-    PointCamAtCoord(self.cam, self.spawnCoords.x + 0.4, self.spawnCoords.y, self.spawnCoords.z + 1.3)
+function Multicharacter:UpdateCameraForPosition(pos)
+    if not self.cam then return end
+
+    local ped = self.playerPed
+    local camPos = GetOffsetFromEntityInWorldCoords(ped, 0.6, 2.2, 0.2)
+    local lookAt = GetOffsetFromEntityInWorldCoords(ped, 0.0, 0.0, 0.4)
+
+    SetCamCoord(self.cam, camPos.x, camPos.y, camPos.z)
+    PointCamAtCoord(self.cam, lookAt.x, lookAt.y, lookAt.z)
+end
+
+function Multicharacter:MoveCameraToPosition(pos)
+    if not self.cam then
+        self:SetupCamera(pos)
+        return
+    end
+
+    Wait(50)
+    self.playerPed = PlayerPedId()
+    self:UpdateCameraForPosition(pos)
+end
+
+function Multicharacter:TeleportPedToPosition(pos)
+    local ped = self.playerPed
+
+    RequestCollisionAtCoord(pos.x, pos.y, pos.z)
+    SetEntityCoords(ped, pos.x, pos.y, pos.z, true, false, false, false)
+    SetEntityHeading(ped, pos.w or 0.0)
+
+    local timeout = GetGameTimer() + 3000
+    while not HasCollisionLoadedAroundEntity(ped) and GetGameTimer() < timeout do
+        Wait(50)
+    end
+
+    local found, groundZ = GetGroundZFor_3dCoord(pos.x, pos.y, pos.z + 2.0, false)
+    if found then
+        SetEntityCoords(ped, pos.x, pos.y, groundZ, true, false, false, false)
+    end
+
+    FreezeEntityPosition(ped, true)
 end
 
 function Multicharacter:AwaitFadeIn()
@@ -70,19 +149,30 @@ function Multicharacter:SetupCharacters()
     ESX.PlayerData = {}
 
     self.spawned = false
+    self.currentPositionIndex = 1
+    self:ShufflePositions()
 
     self.playerPed = PlayerPedId()
-    self.spawnCoords = Config.Spawn[ESX.Math.Random(1,#Config.Spawn)]
+    self.spawnCoords = self:GetPositionForSlot(1)
 
+    RequestCollisionAtCoord(self.spawnCoords.x, self.spawnCoords.y, self.spawnCoords.z)
     SetEntityCoords(self.playerPed, self.spawnCoords.x, self.spawnCoords.y, self.spawnCoords.z, true, false, false, false)
-    SetEntityHeading(self.playerPed, self.spawnCoords.w)
+    SetEntityHeading(self.playerPed, self.spawnCoords.w or 0.0)
+
+    local timeout = GetGameTimer() + 3000
+    while not HasCollisionLoadedAroundEntity(self.playerPed) and GetGameTimer() < timeout do
+        Wait(50)
+    end
+
+    local found, groundZ = GetGroundZFor_3dCoord(self.spawnCoords.x, self.spawnCoords.y, self.spawnCoords.z + 2.0, false)
+    if found then
+        SetEntityCoords(self.playerPed, self.spawnCoords.x, self.spawnCoords.y, groundZ, true, false, false, false)
+    end
 
     SetPlayerControl(ESX.PlayerId, false, 0)
-    self:SetupCamera()
+    self:SetupCamera(self.spawnCoords)
     self:HideHud(true)
-
-    ShutdownLoadingScreen()
-    ShutdownLoadingScreenNui()
+    
     TriggerEvent("esx:loadingScreenOff")
 
     SetTimeout(200, function()
@@ -112,9 +202,13 @@ function Multicharacter:SpawnTempPed()
     local character = self.Characters[self.tempIndex]
     local skin = self:GetSkin()
     local hasValidSkin = character and character.skin and type(character.skin) == 'table' and next(character.skin)
+    local pos = self:GetPositionForSlot(self.tempIndex)
+    self.spawnCoords = pos
     
-    ESX.SpawnPlayer(skin, self.spawnCoords, function()
+    ESX.SpawnPlayer(skin, pos, function()
         self.playerPed = PlayerPedId()
+        SetEntityHeading(self.playerPed, pos.w or 0.0)
+        self:UpdateCameraForPosition(pos)
         
         if hasValidSkin then
             Wait(100)
@@ -205,17 +299,41 @@ function Multicharacter:CloseUI()
     SetNuiFocus(false, false)
 end
 
-function Multicharacter:SetupCharacter(index)
+function Multicharacter:SetupCharacter(index, skipTransition)
     local character = self.Characters[index]
     self.tempIndex = index
 
+    local newPos = self:GetPositionForSlot(index)
+
     if not self.spawned then
+        self.spawnCoords = newPos
         self:SpawnTempPed()
-    elseif character and character.skin then
-        self:ChangeExistingPed()
+    else
+        local duration = Config.TransitionDuration or 400
+
+        if not skipTransition then
+            DoScreenFadeOut(math.floor(duration / 2))
+            self:AwaitFadeOut()
+        end
+
+        self:TeleportPedToPosition(newPos)
+        self.spawnCoords = newPos
+
+        if character and character.skin then
+            self:ChangeExistingPed()
+        end
+
+        Wait(100)
+        self.playerPed = PlayerPedId()
+        self:MoveCameraToPosition(newPos)
+
+        if not skipTransition then
+            DoScreenFadeIn(math.floor(duration / 2))
+        end
     end
 
     self.spawned = index
+    self.currentPositionIndex = index
     self.playerPed = PlayerPedId()
     self:PrepForUI()
 end

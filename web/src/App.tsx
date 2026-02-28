@@ -7,44 +7,49 @@ import { fetchNui } from './utils/fetchNui';
 function App() {
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const [characters, setCharacters] = useState<Character[]>([]);
-  const [Candelete, setCandelete] = useState<boolean>(false);
-  const [MaxAllowedSlot, setMaxAllowedSlot] = useState<number>(0);
-  const [locale, setLocale] = useState<Locale>({ char_info_title: '', play: '', title: '' });
+  const [canDelete, setCanDelete] = useState<boolean>(false);
+  const [maxSlots, setMaxSlots] = useState<number>(0);
+  const [locale, setLocale] = useState<Locale>({ play_game: 'PLAY GAME', quit: 'QUIT', delete: 'DELETE', delete_confirm: '', yes: 'YES', no: 'NO' });
 
   useEffect(() => {
     fetchNui('nuiReady')
   }, [])
 
-  useNuiEvent('ToggleMulticharacter', (data:any) => {
+  useNuiEvent('ToggleMulticharacter', (data: any) => {
     if (data.show) {
       const validCharacters = data.Characters.filter((char: any) => char !== null);
-      // Trier les personnages par ID pour s'assurer que le premier (ID le plus petit) est sélectionné
       validCharacters.sort((a: any, b: any) => (a.id || 0) - (b.id || 0));
+
       const parsedCharacters: Character[] = validCharacters.map((char: any, index: number) => ({
         id: char.id.toString(),
-        name: `${char.firstname} ${char.lastname}`,
+        firstname: char.firstname || '',
+        lastname: char.lastname || '',
         birthDate: char.dateofbirth,
         gender: char.sex?.toUpperCase() === 'MALE' ? 'MALE' : 'FEMALE',
-        occupation: char.job,
+        occupation: char.job || '',
         disabled: char.disabled,
-        isActive: index === 0, // Le premier personnage (ID le plus petit) est actif
+        isActive: index === 0,
       }));
 
       setIsVisible(true);
       setCharacters(parsedCharacters);
-      setCandelete(data.CanDelete);
-      setMaxAllowedSlot(data.AllowedSlot)
-      setLocale(data.Locale)
+      setCanDelete(data.CanDelete);
+      setMaxSlots(data.AllowedSlot);
+      if (data.Locale) setLocale(data.Locale);
     } else {
       setIsVisible(false);
       setCharacters([]);
-
     }
   })
 
-  return isVisible && (
-    <CharacterSelection initialCharacters={characters} Candelete={Candelete} MaxAllowedSlot={MaxAllowedSlot} locale={locale} />
-  );
+  return isVisible ? (
+    <CharacterSelection
+      initialCharacters={characters}
+      canDelete={canDelete}
+      maxSlots={maxSlots}
+      locale={locale}
+    />
+  ) : null;
 }
 
 export default App;

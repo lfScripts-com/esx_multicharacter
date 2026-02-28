@@ -1,10 +1,15 @@
 local nuiReady = false
+local loadingScreenAllowed = false
+
+AddEventHandler('loadingScreen:allowMultichar', function()
+    loadingScreenAllowed = true
+end)
 
 CreateThread(function()
     while not ESX.PlayerLoaded do
         Wait(100)
 
-        if NetworkIsPlayerActive(ESX.playerId) then
+        if NetworkIsPlayerActive(ESX.playerId) and loadingScreenAllowed then
             ESX.DisableSpawnManager()
             DoScreenFadeOut(0)
             Multicharacter:SetupCharacters()
