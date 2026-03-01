@@ -15,11 +15,8 @@ Locales["en"] = {
     ["charnotfound"] = "Character #%s of %s doesn't exist",
 
     UI = {
-        ["play_game"] = "PLAY THIS CHARACTER",
-        ["quit"] = "QUIT",
-        ["delete"] = "DELETE",
-        ["delete_confirm"] = "Are you sure you want to delete?",
-        ["yes"] = "YES",
-        ["no"] = "NO",
+        ["title"] = "CHARACTER SELECTION",
+        ["char_info_title"] = "Character Info",
+        ["play"] = "PLAY",
     }
 }

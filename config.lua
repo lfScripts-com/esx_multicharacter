@@ -1,5 +1,5 @@
 Config = {}
-Config.Locale = GetConvar("esx:locale", "fr")
+Config.Locale = GetConvar("esx:locale", "en")
 
 Config.CanDelete = true
 
@@ -8,37 +8,9 @@ if IsDuplicityVersion() then
 
     Config.Prefix = "char"
 else
-    -- Positions des personnages (x, y, z, w = heading/orientation)
-    -- Le slot 1 utilise la position 1, le slot 2 la position 2, etc.
-    -- Si plus de slots que de positions, les positions tournent en boucle
-    -- La caméra se place toujours automatiquement devant le personnage
-    Config.CharacterPositions = {
-        { x = -786.47, y = 331.39, z = 217.04, w = 174.91 },
-        { x = -773.56, y = 325.95, z = 196.09, w = 349.21 },
-        { x = -789.05, y = 333.22, z = 187.31, w = 166.58 },
-        { x = -64.71, y = -807.89, z = 243.39, w = 251.30 },
+    Config.Spawn = {
+        { x = -811.740662, y = 175.054946, z = 76.728882, w = 104.881896 },
     }
-
-    -- Emotes aléatoires jouées lors de la sélection de personnage
-    -- gender : "all" = homme + femme + peds custom, "m" = homme seulement, "f" = femme seulement
-    Config.SelectionEmotes = {
-        { name = "idle",      gender = "all" },
-        { name = "idle3",  gender = "all" },
-        { name = "idle11",  gender = "m" },
-        { name = "idle12",     gender = "f" },
-        { name = "idle13",   gender = "f" },
-        { name = "idle14",      gender = "m" },
-        { name = "idle15",  gender = "f" },
-        { name = "idle16",  gender = "f" },
-        { name = "idle17",  gender = "f" },
-        { name = "idle18",  gender = "f" },
-        { name = "idle9",  gender = "f" },
-        { name = "idle7",  gender = "m" },
-        { name = "idle6",  gender = "m" },
-    }
-
-    -- Durée du fondu lors du changement de position (ms)
-    Config.TransitionDuration = 400
 
     Config.Relog = true
 

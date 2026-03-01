@@ -21,8 +21,3 @@ RegisterNuiCallback('CreateCharacter', function (data, cb)
     Menu:NewCharacter()
     cb('ok')
 end)
-
-RegisterNuiCallback('QuitGame', function (data, cb)
-    cb('ok')
-    TriggerServerEvent('esx_multicharacter:QuitGame')
-end)

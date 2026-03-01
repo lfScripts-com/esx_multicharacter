@@ -42,8 +42,3 @@ RegisterNetEvent("esx_multicharacter:relog", function()
     local source = source
     TriggerEvent("esx:playerLogout", source)
 end)
-
-RegisterNetEvent("esx_multicharacter:QuitGame", function()
-    local source = source
-    DropPlayer(source, "Vous avez quitté le jeu.")
-end)

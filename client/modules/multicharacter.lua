@@ -4,95 +4,16 @@ Multicharacter._index = Multicharacter
 Multicharacter.canRelog = true
 Multicharacter.Characters = {}
 Multicharacter.hidePlayers = false
-Multicharacter.currentPositionIndex = 1
-Multicharacter.shuffledPositions = nil
 
-function Multicharacter:ShufflePositions()
-    local positions = Config.CharacterPositions
-    if not positions or #positions == 0 then
-        self.shuffledPositions = {}
-        return
-    end
-
-    local indices = {}
-    for i = 1, #positions do
-        indices[i] = i
-    end
-
-    for i = #indices, 2, -1 do
-        local j = math.random(1, i)
-        indices[i], indices[j] = indices[j], indices[i]
-    end
-
-    self.shuffledPositions = indices
-end
-
-function Multicharacter:GetPositionForSlot(slotIndex)
-    local positions = Config.CharacterPositions
-    if not positions or #positions == 0 then
-        return { x = 0.0, y = 0.0, z = 0.0, w = 0.0 }
-    end
-
-    if not self.shuffledPositions or #self.shuffledPositions == 0 then
-        self:ShufflePositions()
-    end
-
-    local shuffleIndex = ((slotIndex - 1) % #self.shuffledPositions) + 1
-    local posIndex = self.shuffledPositions[shuffleIndex]
-    return positions[posIndex]
-end
-
-function Multicharacter:SetupCamera(pos)
-    pos = pos or self.spawnCoords
-    if not self.cam then
-        self.cam = CreateCam("DEFAULT_SCRIPTED_CAMERA", true)
-    end
+function Multicharacter:SetupCamera()
+    self.cam = CreateCam("DEFAULT_SCRIPTED_CAMERA", true)
     SetCamActive(self.cam, true)
     RenderScriptCams(true, false, 1, true, true)
 
-    self:UpdateCameraForPosition(pos)
-end
+    local offset = GetOffsetFromEntityInWorldCoords(self.playerPed, 0, 1.7, 0.4)
 
-function Multicharacter:UpdateCameraForPosition(pos)
-    if not self.cam then return end
-
-    local ped = self.playerPed
-    local camPos = GetOffsetFromEntityInWorldCoords(ped, 0.6, 2.2, 0.2)
-    local lookAt = GetOffsetFromEntityInWorldCoords(ped, 0.0, 0.0, 0.4)
-
-    SetCamCoord(self.cam, camPos.x, camPos.y, camPos.z)
-    PointCamAtCoord(self.cam, lookAt.x, lookAt.y, lookAt.z)
-end
-
-function Multicharacter:MoveCameraToPosition(pos)
-    if not self.cam then
-        self:SetupCamera(pos)
-        return
-    end
-
-    Wait(50)
-    self.playerPed = PlayerPedId()
-    self:UpdateCameraForPosition(pos)
-end
-
-function Multicharacter:TeleportPedToPosition(pos)
-    local ped = self.playerPed
-
-    RequestCollisionAtCoord(pos.x, pos.y, pos.z)
-    SetEntityCoords(ped, pos.x, pos.y, pos.z, true, false, false, false)
-    SetEntityHeading(ped, pos.w or 0.0)
-
-    local timeout = GetGameTimer() + 3000
-    while not HasCollisionLoadedAroundEntity(ped) and GetGameTimer() < timeout do
-        Wait(50)
-    end
-
-    local found, groundZ = GetGroundZFor_3dCoord(pos.x, pos.y, pos.z + 2.0, false)
-    if found then
-        SetEntityCoords(ped, pos.x, pos.y, groundZ, true, false, false, false)
-    end
-
-    FreezeEntityPosition(ped, true)
+    SetCamCoord(self.cam, offset.x + 0.7, offset.y , offset.z)
+    PointCamAtCoord(self.cam, self.spawnCoords.x + 0.4, self.spawnCoords.y, self.spawnCoords.z + 1.3)
 end
 
 function Multicharacter:AwaitFadeIn()
@@ -140,7 +61,7 @@ end
 function Multicharacter:HideHud(hide)
     self.hidePlayers = true
 
-    MumbleSetVolumeOverride(ESX.playerId, 0.0)
+    MumbleSetVolumeOverride(ESX.PlayerId, 0.0)
     HideComponents(hide)
 end
 
@@ -149,30 +70,19 @@ function Multicharacter:SetupCharacters()
     ESX.PlayerData = {}
 
     self.spawned = false
-    self.currentPositionIndex = 1
-    self:ShufflePositions()
 
     self.playerPed = PlayerPedId()
-    self.spawnCoords = self:GetPositionForSlot(1)
+    self.spawnCoords = Config.Spawn[ESX.Math.Random(1,#Config.Spawn)]
 
-    RequestCollisionAtCoord(self.spawnCoords.x, self.spawnCoords.y, self.spawnCoords.z)
     SetEntityCoords(self.playerPed, self.spawnCoords.x, self.spawnCoords.y, self.spawnCoords.z, true, false, false, false)
-    SetEntityHeading(self.playerPed, self.spawnCoords.w or 0.0)
+    SetEntityHeading(self.playerPed, self.spawnCoords.w)
 
-    local timeout = GetGameTimer() + 3000
-    while not HasCollisionLoadedAroundEntity(self.playerPed) and GetGameTimer() < timeout do
-        Wait(50)
-    end
-
-    local found, groundZ = GetGroundZFor_3dCoord(self.spawnCoords.x, self.spawnCoords.y, self.spawnCoords.z + 2.0, false)
-    if found then
-        SetEntityCoords(self.playerPed, self.spawnCoords.x, self.spawnCoords.y, groundZ, true, false, false, false)
-    end
-
-    SetPlayerControl(ESX.playerId, false, 0)
-    self:SetupCamera(self.spawnCoords)
+    SetPlayerControl(ESX.PlayerId, false, 0)
+    self:SetupCamera()
     self:HideHud(true)
-    
+
+    ShutdownLoadingScreen()
+    ShutdownLoadingScreenNui()
     TriggerEvent("esx:loadingScreenOff")
 
     SetTimeout(200, function()
@@ -202,42 +112,22 @@ function Multicharacter:SpawnTempPed()
     local character = self.Characters[self.tempIndex]
     local skin = self:GetSkin()
     local hasValidSkin = character and character.skin and type(character.skin) == 'table' and next(character.skin)
-    local pos = self:GetPositionForSlot(self.tempIndex)
-    self.spawnCoords = pos
     
-    ESX.SpawnPlayer(skin, pos, function()
+    ESX.SpawnPlayer(skin, self.spawnCoords, function()
         self.playerPed = PlayerPedId()
-        SetEntityHeading(self.playerPed, pos.w or 0.0)
-        self:UpdateCameraForPosition(pos)
         
         if hasValidSkin then
             Wait(100)
             
-            local skinToLoad = character.skin
-            local lfCreatorState = GetResourceState('lfCharacterCreator')
-            if lfCreatorState == 'started' and exports['lfCharacterCreator'] and exports['lfCharacterCreator'].skinForLoading then
-                local converted = exports['lfCharacterCreator'].skinForLoading(character.skin)
-                if converted ~= nil then
-                    skinToLoad = converted
+            TriggerEvent("skinchanger:loadSkin", character.skin, function()
+                Wait(100)
+                
+                if exports['lfCharacterCreator'] and exports['lfCharacterCreator'].applySkinAppearance then
+                    exports['lfCharacterCreator']:applySkinAppearance(character.skin)
                 end
-            end
-            
-            if skinToLoad and type(skinToLoad) == 'table' then
-                TriggerEvent("skinchanger:loadSkin", skinToLoad, function()
-                    Wait(100)
-                    
-                    if lfCreatorState == 'started' and exports['lfCharacterCreator'] then
-                        local applyFunc = exports['lfCharacterCreator'].applySkinAppearance
-                        if applyFunc then
-                            applyFunc(character.skin)
-                        end
-                    end
-                    
-                    DoScreenFadeIn(600)
-                end)
-            else
+                
                 DoScreenFadeIn(600)
-            end
+            end)
         else
             DoScreenFadeIn(600)
         end
@@ -260,25 +150,10 @@ function Multicharacter:ChangeExistingPed()
         end
     end
     
-    if newCharacter.skin and type(newCharacter.skin) == 'table' then
-        local skinToLoad = newCharacter.skin
-        local lfCreatorState = GetResourceState('lfCharacterCreator')
-        if lfCreatorState == 'started' and exports['lfCharacterCreator'] and exports['lfCharacterCreator'].skinForLoading then
-            local converted = exports['lfCharacterCreator'].skinForLoading(newCharacter.skin)
-            if converted ~= nil then
-                skinToLoad = converted
-            end
-        end
-        
-        if skinToLoad and type(skinToLoad) == 'table' then
-            TriggerEvent("skinchanger:loadSkin", skinToLoad, function()
-                if lfCreatorState == 'started' and exports['lfCharacterCreator'] then
-                    local applyFunc = exports['lfCharacterCreator'].applySkinAppearance
-                    if applyFunc then
-                        applyFunc(newCharacter.skin)
-                    end
-                end
-            end)
+    if newCharacter.skin then
+        TriggerEvent("skinchanger:loadSkin", newCharacter.skin)
+        if exports['lfCharacterCreator'] and exports['lfCharacterCreator'].applySkinAppearance then
+            exports['lfCharacterCreator']:applySkinAppearance(newCharacter.skin)
         end
     end
 end
@@ -299,41 +174,17 @@ function Multicharacter:CloseUI()
     SetNuiFocus(false, false)
 end
 
-function Multicharacter:SetupCharacter(index, skipTransition)
+function Multicharacter:SetupCharacter(index)
     local character = self.Characters[index]
     self.tempIndex = index
 
-    local newPos = self:GetPositionForSlot(index)
-
     if not self.spawned then
-        self.spawnCoords = newPos
         self:SpawnTempPed()
-    else
-        local duration = Config.TransitionDuration or 400
-
-        if not skipTransition then
-            DoScreenFadeOut(math.floor(duration / 2))
-            self:AwaitFadeOut()
-        end
-
-        self:TeleportPedToPosition(newPos)
-        self.spawnCoords = newPos
-
-        if character and character.skin then
-            self:ChangeExistingPed()
-        end
-
-        Wait(100)
-        self.playerPed = PlayerPedId()
-        self:MoveCameraToPosition(newPos)
-
-        if not skipTransition then
-            DoScreenFadeIn(math.floor(duration / 2))
-        end
+    elseif character and character.skin then
+        self:ChangeExistingPed()
     end
 
     self.spawned = index
-    self.currentPositionIndex = index
     self.playerPed = PlayerPedId()
     self:PrepForUI()
 end
@@ -385,41 +236,25 @@ function Multicharacter:LoadSkinCreator(skin)
             SetPedAoBlobRendering(self.playerPed, true)
             ResetEntityAlpha(self.playerPed)
         else
-            -- Convertir le skin au format attendu par skinchanger (normalise le sexe en 0/1)
-            local skinToLoad = skin
-            local lfCreatorState = GetResourceState('lfCharacterCreator')
-            if lfCreatorState == 'started' and exports['lfCharacterCreator'] and exports['lfCharacterCreator'].skinForLoading then
-                local converted = exports['lfCharacterCreator'].skinForLoading(skin)
-                if converted ~= nil then
-                    skinToLoad = converted
-                end
-            end
-            
-            if skinToLoad and type(skinToLoad) == 'table' then
-                TriggerEvent("skinchanger:loadSkin", skinToLoad, function()
-                    DoScreenFadeIn(600)
-                    SetPedAoBlobRendering(self.playerPed, true)
-                    ResetEntityAlpha(self.playerPed)
-
-                    if exports['lfCharacterCreator'] and exports['lfCharacterCreator'].openSaveableMenu then
-                        exports['lfCharacterCreator']:openSaveableMenu(function()
-                            Multicharacter.finishedCreation = true
-                        end, function()
-                            Multicharacter.finishedCreation = true
-                        end)
-                    else
-                        TriggerEvent("esx_skin:openSaveableMenu", function()
-                            Multicharacter.finishedCreation = true
-                        end, function()
-                            Multicharacter.finishedCreation = true
-                        end)
-                    end
-                end)
-            else
+            TriggerEvent("skinchanger:loadSkin", skin, function()
                 DoScreenFadeIn(600)
                 SetPedAoBlobRendering(self.playerPed, true)
                 ResetEntityAlpha(self.playerPed)
-            end
+
+                if exports['lfCharacterCreator'] and exports['lfCharacterCreator'].openSaveableMenu then
+                    exports['lfCharacterCreator']:openSaveableMenu(function()
+                        Multicharacter.finishedCreation = true
+                    end, function()
+                        Multicharacter.finishedCreation = true
+                    end)
+                else
+                    TriggerEvent("esx_skin:openSaveableMenu", function()
+                        Multicharacter.finishedCreation = true
+                    end, function()
+                        Multicharacter.finishedCreation = true
+                    end)
+                end
+            end)
         end
     end)
 end
@@ -488,28 +323,13 @@ function Multicharacter:PlayerLoaded(playerData, isNew, skin)
         end
     elseif not isNew then
         local characterSkin = skin or self.Characters[self.spawned].skin
-        if characterSkin and type(characterSkin) == 'table' then
-            -- Convertir le skin au format attendu par skinchanger (normalise le sexe en 0/1)
-            local skinToLoad = characterSkin
-            local lfCreatorState = GetResourceState('lfCharacterCreator')
-            if lfCreatorState == 'started' and exports['lfCharacterCreator'] and exports['lfCharacterCreator'].skinForLoading then
-                local converted = exports['lfCharacterCreator'].skinForLoading(characterSkin)
-                if converted ~= nil then
-                    skinToLoad = converted
+        if characterSkin then
+            TriggerEvent("skinchanger:loadSkin", characterSkin, function()
+                if exports['lfCharacterCreator'] and exports['lfCharacterCreator'].applySkinAppearance then
+                    Wait(50)
+                    exports['lfCharacterCreator']:applySkinAppearance(characterSkin)
                 end
-            end
-            
-            if skinToLoad and type(skinToLoad) == 'table' then
-                TriggerEvent("skinchanger:loadSkin", skinToLoad, function()
-                    if lfCreatorState == 'started' and exports['lfCharacterCreator'] then
-                        local applyFunc = exports['lfCharacterCreator'].applySkinAppearance
-                        if applyFunc then
-                            Wait(50)
-                            applyFunc(characterSkin)
-                        end
-                    end
-                end)
-            end
+            end)
         end
     end
 
@@ -523,12 +343,8 @@ function Multicharacter:PlayerLoaded(playerData, isNew, skin)
         if skin and type(skin) == 'table' then
             Wait(300)
             
-            local lfCreatorState = GetResourceState('lfCharacterCreator')
-            if lfCreatorState == 'started' and exports['lfCharacterCreator'] then
-                local applyFunc = exports['lfCharacterCreator'].applySkinAppearance
-                if applyFunc then
-                    applyFunc(skin)
-                end
+            if exports['lfCharacterCreator'] and exports['lfCharacterCreator'].applySkinAppearance then
+                exports['lfCharacterCreator']:applySkinAppearance(skin)
             end
         end
         

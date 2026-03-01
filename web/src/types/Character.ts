@@ -1,7 +1,6 @@
 export interface Character {
   id: string;
-  firstname: string;
-  lastname: string;
+  name: string;
   birthDate: string;
   gender: 'MALE' | 'FEMALE';
   occupation: string;
@@ -10,10 +9,7 @@ export interface Character {
 }
 
 export interface Locale {
-  play_game: string;
-  quit: string;
-  delete: string;
-  delete_confirm: string;
-  yes: string;
-  no: string;
+  char_info_title: string;
+  play : string;
+  title : string;
 }
