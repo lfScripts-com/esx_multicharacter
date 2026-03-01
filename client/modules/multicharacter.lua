@@ -172,7 +172,9 @@ function Multicharacter:SetupCharacters()
     SetPlayerControl(ESX.playerId, false, 0)
     self:SetupCamera(self.spawnCoords)
     self:HideHud(true)
-    
+
+    ShutdownLoadingScreen()
+    ShutdownLoadingScreenNui()
     TriggerEvent("esx:loadingScreenOff")
 
     SetTimeout(200, function()
