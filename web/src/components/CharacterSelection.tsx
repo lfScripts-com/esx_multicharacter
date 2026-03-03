@@ -62,7 +62,12 @@ const CharacterSelection: React.FC<Props> = ({ initialCharacters, canDelete, max
   const filledSlots = characters.map(c => parseInt(c.id));
   const slots: { id: number; filled: boolean }[] = [];
   for (let i = 1; i <= maxSlots; i++) {
-    slots.push({ id: i, filled: filledSlots.includes(i) });
+    if (filledSlots.includes(i)) {
+      slots.push({ id: i, filled: true });
+    }
+  }
+  if (characters.length < maxSlots) {
+    slots.push({ id: 0, filled: false });
   }
 
   return (
